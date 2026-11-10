@@ -21,10 +21,10 @@ One design change from the original plan: the queue is the database (`FOR UPDATE
 - [x] 122 automated tests pass on SQLite, stable over repeated runs; about 96% coverage; ruff clean
 - [x] Mutation checks: 8 deliberate breakages, each caught by a test
 - [x] Real end-to-end run with the API, worker and demo receiver as separate processes on SQLite (14 checks pass)
-- [ ] Docker Compose stack with real PostgreSQL (needs to be run on the owner's machine)
+- [x] Docker Compose stack on real PostgreSQL 17: migration runs, walkthrough passes, all 122 tests pass against it
 - [ ] GitHub Actions CI (runs after the first push)
 
 ## Next steps
-1. Run the Docker stack and the walkthrough against PostgreSQL.
+1. (done) Docker stack and tests verified on PostgreSQL.
 2. Publish to GitHub, then confirm CI is green.
 3. Work through `docs/LEARNING_GUIDE.md`, including the "make it yours" exercises.
