@@ -1,0 +1,62 @@
+# The whole system: PostgreSQL, the API, the worker, and a demo receiver to deliver to.
+#   docker compose up --build
+
+x-app-environment: &app-environment
+  WHP_DATABASE_URL: postgresql+psycopg://${DB_USER:?set it in .env}:${DB_PASSWORD:?set it in .env}@postgres:5432/webhooks
+  WHP_ADMIN_TOKEN: ${ADMIN_TOKEN:?set it in .env}
+  # Demo only: the demo receiver lives on a private address, which production mode would refuse.
+  WHP_ALLOW_PRIVATE_TARGETS: "true"
+  # Short delays so a demo does not take hours. Production defaults are 30s, 2m, 10m, 1h, 6h.
+  WHP_RETRY_DELAYS_SECONDS: "[2,2,2,2]"
+  WHP_CIRCUIT_COOLDOWN_SECONDS: "20"
+  WHP_WORKER_POLL_SECONDS: "0.5"
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: webhooks
+      POSTGRES_USER: ${DB_USER:?set it in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set it in .env}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d webhooks"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    # Create or update the tables first, then start the web server.
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    environment: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    environment: *app-environment
+    depends_on:
+      api:
+        condition: service_healthy
+
+  receiver:
+    build: .
+    command: ["uvicorn", "demo.receiver:app", "--host", "0.0.0.0", "--port", "9000"]
+    ports:
+      - "127.0.0.1:9000:9000"
+
+volumes:
+  pgdata:

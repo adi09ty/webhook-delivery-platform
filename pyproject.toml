@@ -1,0 +1,32 @@
+[project]
+name = "webhook-delivery-platform"
+version = "1.0.0"
+description = "Reliable webhook delivery: signed requests, retries with back-off, dead-letter queue, replay, circuit breaker"
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_reserved_words.py" = ["E501"]  # long word lists
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+filterwarnings = [
+    # FastAPI's TestClient (via Starlette) warns that httpx is being replaced; nothing for this project to fix.
+    "ignore::DeprecationWarning:fastapi.testclient",
+    "ignore:Using `httpx` with `starlette.testclient`:Warning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/worker.py:main"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
